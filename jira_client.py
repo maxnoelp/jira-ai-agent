@@ -1,5 +1,5 @@
 from jira import JIRA
-import os
+from PySide6.QtCore import QSettings
 from datetime import datetime, timedelta, timezone
 from jira.exceptions import JIRAError
 
@@ -36,12 +36,15 @@ def get_jira():
     Returns:
         JIRA: The JIRA instance created from the environment variables.
     """
-    url = os.getenv("JIRA_URL")
-    email = os.getenv("JIRA_EMAIL")
-    token = os.getenv("JIRA_TOKEN")
+    settings = QSettings("PrinzCodeAgent")
+    url = settings.value("jira/url")
+    email = settings.value("jira/email")
+    token = settings.value("jira/token")
 
-    if not all([url, email, token]):
-        raise ValueError("JIRA_URL / JIRA_EMAIL / JIRA_TOKEN fehlen!")
+    if not url or not email or not token:
+        raise RuntimeError(
+            "Bitte in den Einstellungen Jira-URL, Email und Token eintragen."
+        )
 
     return JIRA(server=url, basic_auth=(email, token))
 
