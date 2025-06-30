@@ -23,6 +23,7 @@ from ai import suggest_stack, revise_stack, decompose_project
 from dialogs.project_dialog import ProjectDialog
 from jira_client import create_jira_project
 from ui.ticket_tab import TicketTab
+from ui.settings_tab import SettingsTab
 
 
 def clean_yaml(raw: str) -> str:
@@ -86,8 +87,8 @@ class MainWindow(QMainWindow):
 
         self.question_lbl = QLabel("")  # zeigt „FRAGE: …“
 
-        self.ok_btn = QPushButton("✔ Tech-Stack bestätigen")
-        self.mod_btn = QPushButton("🛠 Anpassen")
+        self.ok_btn = QPushButton("Tech-Stack bestätigen")
+        self.mod_btn = QPushButton("Anpassen")
 
         # Buttons anfangs deaktivieren
         for b in (self.ok_btn, self.mod_btn):
@@ -124,8 +125,12 @@ class MainWindow(QMainWindow):
         tabs.addTab(tab1, "Projekt")
 
         # --- Tab 2: Stories & Jira-Push ---
-        tab2 = TicketTab()
-        tabs.addTab(tab2, "Tickets")
+        self.ticket_tab = TicketTab()
+        tabs.addTab(self.ticket_tab, "Tickets")
+
+        # --- Tab 3: Settings ---
+        tab3 = SettingsTab()
+        tabs.addTab(tab3, "Einstellungen")
 
         # Setze das Tab-Widget als zentrales Widget
         self.setCentralWidget(tabs)
