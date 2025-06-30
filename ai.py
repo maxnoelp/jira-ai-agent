@@ -3,8 +3,15 @@ import os
 import json
 import traceback
 from openai import OpenAI
+from PySide6.QtCore import QSettings
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+settings = QSettings("PrinzCodeAgent")
+openai_key = settings.value("openai/key", type=str)
+
+if not openai_key:
+    raise RuntimeError("OpenAI API-Key fehlt! Bitte in den Einstellungen setzen.")
+
+client = OpenAI(api_key=openai_key)
 
 SYSTEM_PROMPT = """
 You are a senior solution architect.
@@ -148,11 +155,7 @@ Output ONLY valid JSON matching this schema, no markdown, no commentary.
 """
 
 
-def generate_ticket_content(prompt: str) -> dict:
-    """
-    Erzeugt anhand des gegebenen Prompts den Inhalt eines Jira-Tickets.
-    Liefert ein dict mit keys: summary, points, tasks, acceptance_criteria.
-    """
+def generate_ticket_content(prompt: str) -> list[dict]:
     try:
         resp = client.chat.completions.create(
             model="gpt-4o-mini",
@@ -166,9 +169,20 @@ def generate_ticket_content(prompt: str) -> dict:
         )
         raw = resp.choices[0].message.content.strip()
         print("⮕ Ticket-LLM-Raw-JSON:\n", raw)
-        return json.loads(raw)
+        parsed = json.loads(raw)
+
+        # Extrahiere die Ticket-Liste
+        if isinstance(parsed, dict):
+            # wenn der LLM unter "tickets" ausgeliefert hat
+            if "tickets" in parsed and isinstance(parsed["tickets"], list):
+                return parsed["tickets"]
+            # einzelnes Ticket
+            return [parsed]
+        elif isinstance(parsed, list):
+            return parsed
+
+        raise RuntimeError(f"Unerwartetes Format von LLM: {type(parsed)}")
 
     except Exception as e:
-        # für Debugging detaillierte Fehlermeldung
         err = traceback.format_exc()
         raise RuntimeError(f"generate_ticket_content fehlgeschlagen: {e}\n{err}")
