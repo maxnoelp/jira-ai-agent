@@ -21,42 +21,46 @@ class TicketTab(QWidget):
 
     def showEvent(self, event: QEvent):
         super().showEvent(event)
-        # Beim ersten Anzeigen des Tabs Projekte laden
+        # load projects only at show
         if not self._projects_loaded:
             self.load_projects()
 
     def _setup_ui(self):
         l = QVBoxLayout(self)  # noqa: E741
 
-        # Dropdown, um ein Projekt auszuwählen
+        # Dropdown, selecting a project
         l.addWidget(QLabel("Jira-Projekt auswählen:"))
         self.project_cb = QComboBox()
         l.addWidget(self.project_cb)
 
-        # Button, um die aktuellen Sprints zu laden
+        # Button, load active sprints
         self.load_btn = QPushButton("Sprints laden")
         self.load_btn.clicked.connect(self.load_sprints)
         l.addWidget(self.load_btn)
 
-        # Dropdown, um den aktiven Sprint auszuwählen
+        # Dropdown, selecting a sprint
         l.addWidget(QLabel("Sprint auswählen:"))
         self.sprint_cb = QComboBox()
         l.addWidget(self.sprint_cb)
 
-        # Freitext für AI-Ticketbeschreibung
+        # text for AI prompt
         l.addWidget(QLabel("Ticket-Inhalt (AI-Prompt):"))
         self.prompt_te = QTextEdit()
         l.addWidget(self.prompt_te, stretch=1)
 
-        # Erstellen-Button
+        # create-btn
         self.create_btn = QPushButton("Ticket erstellen")
         self.create_btn.clicked.connect(self.on_create_ticket)
         l.addWidget(self.create_btn)
 
     def load_projects(self):
         """
-        Lädt alle Jira-Projekte einmalig in das Dropdown.
+        Lädt die Jira-Projekte und fügt sie dem Dropdown-Menü hinzu.
+
+        Wenn die Jira-Einstellungen fehlen, wird eine Fehlermeldung angezeigt.
+        Wenn die Projekt-Liste bereits geladen wurde, wird nichts getan.
         """
+
         try:
             jira = get_jira()
         except Exception:
@@ -67,7 +71,6 @@ class TicketTab(QWidget):
             )
             return
 
-        # Nur einmal laden
         if self._projects_loaded:
             return
 
@@ -76,7 +79,17 @@ class TicketTab(QWidget):
         self._projects_loaded = True
 
     def load_sprints(self):
-        """Sprints des ausgewählten Projekts laden."""
+        """
+        Loads the sprints for the currently selected Jira project into the sprint dropdown.
+
+        This function first ensures that Jira projects are loaded. It then retrieves the
+        currently selected project's key and fetches its associated sprints, populating
+        the dropdown with active and future sprints.
+
+        Raises:
+            Exception: If the Jira instance cannot be obtained or if the project key is not selected.
+        """
+
         try:
             jira = get_jira()
         except Exception:
@@ -116,7 +129,6 @@ class TicketTab(QWidget):
         from ai import generate_ticket_content
 
         result = generate_ticket_content(prompt)
-        # Erwarte entweder ein einzelnes Ticket oder eine Liste von Tickets
         tickets = result if isinstance(result, list) else [result]
 
         try:
@@ -131,7 +143,6 @@ class TicketTab(QWidget):
 
         created_keys = []
         for ticket in tickets:
-            # Für jede Ticket-Definition eine Story anlegen
             story_key = create_story(
                 jira,
                 project_key,

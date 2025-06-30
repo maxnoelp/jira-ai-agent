@@ -1,5 +1,4 @@
 from PySide6.QtCore import QSettings, Slot
-from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
     QWidget,
     QLabel,
@@ -26,9 +25,6 @@ class SettingsTab(QWidget):
         save_btn.clicked.connect(self._save_settings)
 
         form = QFormLayout(self)
-        # Abstand zwischen Label und Feld: 8px (horizontal),
-        # Abstand zwischen den Zeilen: 8px (vertical),
-        # außen unten 15px
         form.setHorizontalSpacing(8)
         form.setVerticalSpacing(24)
         form.setContentsMargins(24, 24, 24, 24)
@@ -37,7 +33,6 @@ class SettingsTab(QWidget):
         form.addRow("Jira-Email:", self.jira_email)
         form.addRow("Jira-Token:", self.jira_token)
         form.addRow("OpenAI API-Key:", self.openai_key)
-        # Für den Button einfach eine volle Zeile
         form.addRow(QLabel(), save_btn)
 
     def _load_settings(self):

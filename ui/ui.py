@@ -27,26 +27,36 @@ from ui.settings_tab import SettingsTab
 
 
 def clean_yaml(raw: str) -> str:
-    """Entfernt ```-Fences und evtl. Root-Key."""
+    """
+    Cleans and formats a raw YAML string by removing code fences and adjusting indentation.
+
+    This function performs the following operations:
+    1. Strips leading and trailing whitespace from the input string.
+    2. Removes opening and closing code fences if present.
+    3. If the text starts with 'technology_stack:', it adjusts the indentation of the lines
+       by removing leading spaces from each line after the first.
+
+    Args:
+        raw (str): The raw YAML string to be cleaned.
+
+    Returns:
+        str: The cleaned and formatted YAML string.
+    """
+
     txt = raw.strip()
 
-    # 1) Code-Fences entfernen
     txt = re.sub(r"^```[^\n]*\n", "", txt)  # opening fence
     txt = re.sub(r"\n```$", "", txt)  # closing fence
 
-    # 2) Root-Key 'technology_stack:' entfernen
     if txt.startswith("technology_stack:"):
         txt = "\n".join(
-            line[2:] if line.startswith("  ") else line  # Einrückung kürzen
-            for line in txt.splitlines()[1:]
+            line[2:] if line.startswith("  ") else line for line in txt.splitlines()[1:]
         )
 
     return txt.strip()
 
 
 class ModifyDialog(QDialog):
-    """Einfacher Modal-Dialog für Stack-Änderungen"""
-
     def __init__(self, question: str, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Stack anpassen")
@@ -74,18 +84,18 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Prinz-Code Agent")
         self.resize(1100, 640)
 
-        # ------------ Eingabe ------------
+        # ------------ Input ------------
         self.in_edit = QTextEdit()
         self.in_edit.setPlaceholderText("Beschreibe dein Projekt …")
 
         self.ask_btn = QPushButton("Tech-Stack vorschlagen")
         self.ask_btn.clicked.connect(self.on_suggest)
 
-        # ------------ Ausgabe ------------
+        # ------------ Output ------------
         self.tree = QTreeWidget()
         self.tree.setHeaderLabels(["Komponente", "Details"])
 
-        self.question_lbl = QLabel("")  # zeigt „FRAGE: …“
+        self.question_lbl = QLabel("")
 
         self.ok_btn = QPushButton("Tech-Stack bestätigen")
         self.mod_btn = QPushButton("Anpassen")
@@ -109,13 +119,13 @@ class MainWindow(QMainWindow):
         # ------------ Layout ------------
         tabs = QTabWidget()
 
-        # --- Tab 1: Projekt anlegen & Stack vorschlagen ---
+        # --- Tab 1: Project ---
         tab1 = QWidget()
         lyt1 = QVBoxLayout(tab1)
         lyt1.addWidget(QLabel("Projekt anlegen & Tech-Stack"))
         lyt1.addWidget(self.in_edit)
         lyt1.addWidget(self.ask_btn)
-        lyt1.addWidget(self.tree)  # ggf. nur die Stack-Ansicht
+        lyt1.addWidget(self.tree)
         lyt1.addWidget(self.question_lbl)
         lyt1.addWidget(self.ok_btn)
         lyt1.addWidget(self.mod_btn)
@@ -132,11 +142,10 @@ class MainWindow(QMainWindow):
         tab3 = SettingsTab()
         tabs.addTab(tab3, "Einstellungen")
 
-        # Setze das Tab-Widget als zentrales Widget
         self.setCentralWidget(tabs)
 
         # ---------- State ----------
-        self.yaml_raw = ""  # aktuell angezeigter YAML-Text
+        self.yaml_raw = ""
         self.stories = []
 
     # ---------- Slots ----------
@@ -160,10 +169,10 @@ class MainWindow(QMainWindow):
             self.question_lbl.clear()
             return
 
-        # YAML → Tree füllen
+        # YAML → fill Tree
         self.populate_tree(yaml_part)
 
-        # Frage & Buttons aktivieren
+        # Btn & questions activate
         self.question_lbl.setText(question)
         for b in (self.ok_btn, self.mod_btn):
             b.setEnabled(True)
@@ -205,7 +214,7 @@ class MainWindow(QMainWindow):
     def on_modify(self) -> None:
         dlg = ModifyDialog(self.question_lbl.text(), self)
         if dlg.exec() != QDialog.Accepted:
-            return  # abgebrochen
+            return  # break
 
         changes_txt = dlg.changes()
         if not changes_txt:
@@ -214,7 +223,7 @@ class MainWindow(QMainWindow):
             )
             return
 
-        # --- KI aufrufen ---
+        # --- call KI ---
         self.ok_btn.setEnabled(False)
         self.mod_btn.setEnabled(False)
         self.question_lbl.setText("⏳ Änderungen werden geprüft …")
@@ -255,16 +264,13 @@ class MainWindow(QMainWindow):
 
         log_lines = []
 
-        # für jeden Sprint aus dem Plan
         for sp in self.sprint_plan:
-            # sprint_name und optional goal aus dem Plan
+            # sprint name
             name = sp.get("name", "Sprint")
             goal = sp.get("goal", "")
-            # Hier kannst du goal verwenden, wenn du willst
             sprint_id = create_sprint(jira, board_id, name, days=14)
             log_lines.append(f"🏃 {name} (ID {sprint_id}) angelegt")
 
-            # alle Epics, die in diesem Sprint gelistet sind
             for epic in self.stories:
                 if epic["epic"] in sp.get("epics", []):
                     epic_key = create_epic(jira, project_key, epic["epic"])
@@ -289,27 +295,26 @@ class MainWindow(QMainWindow):
         self.question_lbl.setText("⏳ Stories werden erstellt …")
         QApplication.processEvents()
 
-        # Baum & State zurücksetzen
+        # tree and stories clear
         self.tree.clear()
         self.stories = []
         self.sprint_plan = []
 
-        # LLM-Aufruf
+        # LLM call
         try:
             plan = decompose_project(self.in_edit.toPlainText(), self.yaml_raw)
-            # plan ist jetzt ein dict mit "epics" und "sprints"
             if isinstance(plan, dict):
                 self.stories = plan.get("epics", [])
                 self.sprint_plan = plan.get("sprints", [])
             else:
-                # Fallback: reine Liste von Epics
+                # Fallback
                 self.stories = plan
         except Exception as exc:
             QMessageBox.critical(self, "LLM-Fehler", str(exc))
             self.gen_btn.setEnabled(True)
             return
 
-        # Tree neu befüllen (Epics & ihre Stories)
+        # fill tree
         for epic in self.stories:
             epic_item = QTreeWidgetItem([f"[EPIC] {epic['epic']}"])
             self.tree.addTopLevelItem(epic_item)
@@ -321,7 +326,7 @@ class MainWindow(QMainWindow):
                     QTreeWidgetItem(story_item, [f"• {t}"])
         self.tree.expandAll()
 
-        # Button für Push freigeben
+        # activate btn for push
         self.push_btn.setEnabled(True)
 
 
