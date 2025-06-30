@@ -34,17 +34,11 @@ Offene Punkte
 ## Install
 
 - make a virutal Enviorment
-- create .env file
-    ```text
-    JIRA_URL=
-    JIRA_EMAIL=
-    JIRA_TOKEN=
-    OPENAI_API_KEY=
-    ```
 - run `pip install requirements.txt`
 - run `python main.py`
 
 ## Function
 
 - can create TechStack and make all Sprints and tickets from ai
-- can make a unique Ticket from ai
+- can make a unique Ticket from ai or a list of tickets
+- can add Jira url, Jira Email, Jira Token and OpenAI Key in settings
