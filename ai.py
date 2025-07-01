@@ -5,13 +5,13 @@ import traceback
 from openai import OpenAI
 from PySide6.QtCore import QSettings
 
-settings = QSettings("PrinzCodeAgent")
-openai_key = settings.value("openai/key", type=str)
+# settings = QSettings("PrinzCodeAgent")
+# openai_key = settings.value("openai/key", type=str)
 
-if not openai_key:
-    raise RuntimeError("OpenAI API-Key fehlt! Bitte in den Einstellungen setzen.")
+# if not openai_key:
+#     raise RuntimeError("OpenAI API-Key fehlt! Bitte in den Einstellungen setzen.")
 
-client = OpenAI(api_key=openai_key)
+# client = OpenAI(api_key=openai_key)
 
 SYSTEM_PROMPT = """
 You are a senior solution architect.
@@ -26,7 +26,16 @@ Return TWO blocks:
 """
 
 
+def _get_openai_client() -> str:
+    settings = QSettings("PrinzCodeAgent")
+    openai_key = settings.value("openai/key", type=str)
+    if not openai_key:
+        raise RuntimeError("OpenAI API-Key fehlt! Bitte in den Einstellungen setzen.")
+    return OpenAI(api_key=openai_key)
+
+
 def suggest_stack(project_desc: str) -> tuple[str, str]:
+    client = _get_openai_client()
     resp = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[
@@ -64,6 +73,7 @@ Return TWO blocks:
 
 
 def revise_stack(current_yaml: str, user_changes: str) -> tuple[str, str]:
+    client = _get_openai_client()
     """Returns (new_yaml, new_question)"""
     prompt = REVISION_PROMPT.replace("$STACK", current_yaml).replace(
         "$CHANGES", user_changes
@@ -125,6 +135,7 @@ Output ONLY valid JSON matching this schema, no markdown, no commentary:
 
 
 def decompose_project(description: str, stack_yaml: str) -> dict:
+    client = _get_openai_client()
     resp = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[
@@ -156,6 +167,7 @@ Output ONLY valid JSON matching this schema, no markdown, no commentary.
 
 
 def generate_ticket_content(prompt: str) -> list[dict]:
+    client = _get_openai_client()
     try:
         resp = client.chat.completions.create(
             model="gpt-4o-mini",
